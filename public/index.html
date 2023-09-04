@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>Leaflet sample</title>
+      <link rel = "stylesheet" href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
+      <script src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+   </head>
+
+   <body>
+      <div id = "map" style = "width: 900px; height: 580px"></div>
+      <script>
+         // Creating map options
+         var mapOptions = {
+            center: [55.751244, 37.618423],
+            zoom: 10
+         }
+         
+         // Creating a map object
+         var map = new L.map('map', mapOptions);
+         
+         // Creating a Layer object
+         var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+         
+         // Adding layer to the map
+         map.addLayer(layer);
+
+         var markersGroup = L.layerGroup();
+         map.addLayer(markersGroup);
+      </script>
+      <br>
+      <textarea name="coordinatesDisplay" id="coordinatesDisplay" cols="80" rows="10"></textarea>
+      <button type="button" onClick = "displayPath()">Display path</button>      
+      <button type="button" onClick = "removeAllCoordinates()">Remove All Markers</button>      
+      <script type="text/javascript" src="socket.io/socket.io.js"></script>
+      <script type="text/javascript">
+         const socket = io()
+         const maxMarkers = 9
+         
+         const coordinatesDisplay = document.getElementById('coordinatesDisplay')
+         map.on('click', (e) => {
+            var markersCount = markersGroup.getLayers().length
+            if(markersCount<=maxMarkers) {
+               const marker = new L.Marker(e.latlng).addTo(markersGroup)
+               socket.emit('fromBrowser', e.latlng)
+            } else {
+               markersGroup.clearLayers()
+            }
+            
+         })
+
+         socket.on("printCoordinates", coordinates => {
+            let coordinatesString = ""
+            for(el of coordinates){
+               coordinatesString +=`latitude: ${el[0]} and longitude: ${el[1]}\n`
+            }
+            
+            coordinatesDisplay.value = coordinatesString
+         })
+
+         
+         function displayPath() {
+            socket.emit("requestDisplayPath")
+         }
+
+         socket.on("displayPath", coordinates => {
+            var polyline = L.polyline(coordinates, {color: 'red'}).addTo(markersGroup)
+         })
+
+         function removeAllCoordinates() {
+            socket.emit('clearAll')
+            coordinatesDisplay.value = ""
+            markersGroup.clearLayers()
+         }
+
+      </script>
+   </body>
+   
+</html>
